@@ -30,7 +30,7 @@ func (p *product) deleteProduct(db *sql.DB) error {
 
 func (p *product) createProduct(db *sql.DB) error {
 	err := db.QueryRow(
-		"INSERT INTO products(name, price) VALUES($1, $2) RETURNING id",
+		"INSERT INTO products(name, price) VALUES ($1, $2) RETURNING id",
 		p.Name, p.Price).Scan(&p.ID)
 
 	if err != nil {
@@ -62,4 +62,43 @@ func getProducts(db *sql.DB, start, count int) ([]product, error) {
 	}
 
 	return products, nil
+}
+
+func getAllProducts(db *sql.DB, descending bool) ([]product, error) {
+	query := ""
+	if descending {
+		query = "SELECT id, name, price FROM products ORDER BY price DESC "
+	} else {
+		query = "SELECT id, name, price FROM products ORDER BY price ASC "
+	}
+
+	rows, err := db.Query(query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	products := []product{}
+
+	for rows.Next() {
+		var p product
+		if err := rows.Scan(&p.ID, &p.Name, &p.Price); err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+
+	return products, nil
+}
+
+func (p *product) getMostExpensive(db *sql.DB) error {
+	err := db.QueryRow("SELECT id, name, price FROM products WHERE price = (SELECT max(price) FROM products)").Scan(&p.ID, &p.Name, &p.Price)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

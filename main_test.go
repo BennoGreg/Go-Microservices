@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -75,7 +76,7 @@ func TestCreateProduct(t *testing.T) {
 
 	clearTable()
 
-	var jsonStr = []byte(`{"name":"test product 1", "price": 99.22}`)
+	var jsonStr = []byte(`{"name":"test product", "price": 11.22}`)
 	req, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -89,7 +90,7 @@ func TestCreateProduct(t *testing.T) {
 		t.Errorf("Expected product name to be 'test product'. Got '%v'", m["name"])
 	}
 
-	if m["price"] != 99.22 {
+	if m["price"] != 11.22 {
 		t.Errorf("Expected product price to be '11.22'. Got '%v'", m["price"])
 	}
 
@@ -161,6 +162,76 @@ func TestDeleteProduct(t *testing.T) {
 	checkResponseCode(t, http.StatusNotFound, response.Code)
 }
 
+func TestGetProductsOrdered(t *testing.T) {
+	clearTable()
+	addRndProducts(5)
+
+	req, _ := http.NewRequest("GET", "/allProducts?desc=1", nil)
+
+	response := executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	var m []product
+	json.Unmarshal(response.Body.Bytes(), &m)
+
+	firstElem := m[0]
+	lastElem := m[4]
+
+	min, max := findMinAndMax(m)
+	if min != lastElem.Price || max != firstElem.Price {
+		t.Errorf("Product is not sorted descending")
+	}
+
+}
+
+func TestGetMostExpensiveProduct(t *testing.T) {
+	clearTable()
+	addProducts(5)
+
+	req, _ := http.NewRequest("GET", "/getMostExpensive", nil)
+
+	response := executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	var m map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &m)
+
+	//5 is the highest price
+	if m["price"] != 50.00 {
+		t.Errorf("Price is not the highest")
+	}
+}
+
+func findMinAndMax(a []product) (min float64, max float64) {
+	min = a[0].Price
+	max = a[0].Price
+	for _, value := range a {
+		if value.Price < min {
+			min = value.Price
+		}
+		if value.Price > max {
+			max = value.Price
+		}
+	}
+	return min, max
+}
+
+func addRndProducts(count int) {
+	min := 0.01
+	max := float64(count)
+
+	if count < 1 {
+		count = 1
+	}
+
+	for i := 0; i < count; i++ {
+		rndNumber := min + rand.Float64()*(max-min)
+		a.DB.Exec("INSERT INTO products(name, price) VALUES ($1, $2)", "Product "+strconv.Itoa(i), rndNumber)
+	}
+}
+
 func addProducts(count int) {
 
 	if count < 1 {
@@ -168,7 +239,7 @@ func addProducts(count int) {
 	}
 
 	for i := 0; i < count; i++ {
-		a.DB.Exec("INSERT INTO products(name, price) VALUE ($1, $2)", "Product "+strconv.Itoa(i), (i+1.0)*10)
+		a.DB.Exec("INSERT INTO products(name, price) VALUES ($1, $2)", "Product "+strconv.Itoa(i), (i+1.0)*10)
 	}
 
 }
