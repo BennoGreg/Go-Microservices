@@ -183,6 +183,7 @@ func (a *App) getMostExpensiveProduct(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	respondWithJSON(w, http.StatusOK, p)
 
 }
@@ -197,4 +198,5 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
+
 }
